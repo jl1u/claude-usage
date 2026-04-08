@@ -66,10 +66,11 @@ def require_db():
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 
-def cmd_scan():
+def cmd_scan(projects_dir=None):
     from scanner import scan, PROJECTS_DIR
-    print(f"Scanning {PROJECTS_DIR} ...")
-    scan()
+    target = Path(projects_dir) if projects_dir else PROJECTS_DIR
+    print(f"Scanning {target} ...")
+    scan(projects_dir=target)
 
 
 def cmd_today():
@@ -250,7 +251,7 @@ def cmd_dashboard():
     import time
 
     print("Running scan first...")
-    cmd_scan()
+    cmd_scan(projects_dir=None)
 
     print("\nStarting dashboard server...")
     from dashboard import serve
@@ -287,4 +288,19 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         print(USAGE)
         sys.exit(0)
-    COMMANDS[sys.argv[1]]()
+
+    cmd = sys.argv[1]
+    args = sys.argv[2:]
+
+    if cmd == "scan":
+        projects_dir = None
+        if "--projects-dir" in args:
+            idx = args.index("--projects-dir")
+            if idx + 1 < len(args):
+                projects_dir = args[idx + 1]
+            else:
+                print("Error: --projects-dir requires a path argument")
+                sys.exit(1)
+        cmd_scan(projects_dir=projects_dir)
+    else:
+        COMMANDS[cmd]()
