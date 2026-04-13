@@ -9,7 +9,11 @@ Commands:
 """
 
 import sys
+import os
 import sqlite3
+import shutil
+import subprocess
+import webbrowser
 from pathlib import Path
 from datetime import datetime, date
 
@@ -35,6 +39,41 @@ def require_db():
         print("Database not found. Run: python cli.py scan")
         sys.exit(1)
     return sqlite3.connect(DB_PATH)
+
+
+def is_wsl():
+    try:
+        return "microsoft" in Path("/proc/sys/kernel/osrelease").read_text().lower()
+    except OSError:
+        return False
+
+
+def open_dashboard_url(url):
+    if is_wsl():
+        wslview = shutil.which("wslview")
+        if wslview:
+            try:
+                subprocess.Popen(
+                    [wslview, url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return True
+            except OSError:
+                pass
+        return False
+
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return False
+
+    try:
+        return webbrowser.open(url)
+    except Exception:
+        return False
+
+
+def get_dashboard_host():
+    return "0.0.0.0" if is_wsl() else "localhost"
 
 
 # ── Commands ──────────────────────────────────────────────────────────────────
@@ -219,9 +258,11 @@ def cmd_stats():
 
 
 def cmd_dashboard():
-    import webbrowser
     import threading
     import time
+
+    host = get_dashboard_host()
+    browser_url = "http://localhost:8080"
 
     print("Running scan first...")
     cmd_scan(projects_dir=None)
@@ -231,11 +272,12 @@ def cmd_dashboard():
 
     def open_browser():
         time.sleep(1.0)
-        webbrowser.open("http://localhost:8080")
+        if not open_dashboard_url(browser_url):
+            print(f"Open manually: {browser_url}")
 
     t = threading.Thread(target=open_browser, daemon=True)
     t.start()
-    serve(port=8080)
+    serve(port=8080, host=host)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
