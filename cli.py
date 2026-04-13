@@ -13,36 +13,9 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, date
 
+from pricing import calc_cost
+
 DB_PATH = Path.home() / ".claude" / "usage.db"
-
-PRICING = {
-    "claude-opus-4-6":   {"input": 15.00, "output": 75.00},
-    "claude-opus-4-5":   {"input": 15.00, "output": 75.00},
-    "claude-sonnet-4-6": {"input":  3.00, "output": 15.00},
-    "claude-sonnet-4-5": {"input":  3.00, "output": 15.00},
-    "claude-haiku-4-5":  {"input":  0.80, "output":  4.00},
-    "claude-haiku-4-6":  {"input":  0.80, "output":  4.00},
-    "default":           {"input":  3.00, "output": 15.00},
-}
-
-def get_pricing(model):
-    if not model:
-        return PRICING["default"]
-    if model in PRICING:
-        return PRICING[model]
-    for key in PRICING:
-        if key != "default" and model.startswith(key):
-            return PRICING[key]
-    return PRICING["default"]
-
-def calc_cost(model, inp, out, cache_read, cache_creation):
-    p = get_pricing(model)
-    return (
-        inp          * p["input"]  / 1_000_000 +
-        out          * p["output"] / 1_000_000 +
-        cache_read   * p["input"]  * 0.10 / 1_000_000 +
-        cache_creation * p["input"] * 1.25 / 1_000_000
-    )
 
 def fmt(n):
     if n >= 1_000_000:

@@ -8,6 +8,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from datetime import datetime
 
+from pricing import PRICING
+
 DB_PATH = Path.home() / ".claude" / "usage.db"
 
 
@@ -252,15 +254,8 @@ let selectedModels = new Set();
 let selectedRange = '30d';
 let charts = {};
 
-// ── Pricing (Anthropic API, April 2026) ────────────────────────────────────
-const PRICING = {
-  'claude-opus-4-6':   { input: 6.15,  output: 30.75, cache_write: 7.69, cache_read: 0.61 },
-  'claude-opus-4-5':   { input: 6.15,  output: 30.75, cache_write: 7.69, cache_read: 0.61 },
-  'claude-sonnet-4-6': { input: 3.69,  output: 18.45, cache_write: 4.61, cache_read: 0.37 },
-  'claude-sonnet-4-5': { input: 3.69,  output: 18.45, cache_write: 4.61, cache_read: 0.37 },
-  'claude-haiku-4-5':  { input: 1.23,  output:  6.15, cache_write: 1.54, cache_read: 0.12 },
-  'claude-haiku-4-6':  { input: 1.23,  output:  6.15, cache_write: 1.54, cache_read: 0.12 },
-};
+// ── Pricing (Anthropic API, April 2026, 5-minute cache writes) ─────────────
+const PRICING = __PRICING_JSON__;
 
 function isBillable(model) {
   if (!model) return false;
@@ -654,6 +649,10 @@ setInterval(loadData, 30000);
 """
 
 
+def render_html():
+    return HTML_TEMPLATE.replace("__PRICING_JSON__", json.dumps(PRICING, sort_keys=True))
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -663,7 +662,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+            self.wfile.write(render_html().encode("utf-8"))
 
         elif self.path == "/api/data":
             data = get_dashboard_data()
